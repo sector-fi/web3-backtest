@@ -2,6 +2,40 @@ import { Backtest } from '../../lib/backtest.js';
 import { DataSourceInfo } from '../../lib/datasource/types.js';
 import { waitFor } from '../../lib/utils/utility.js';
 import { CpmmHedgedStrategy } from './strategy.js';
+import axios, { AxiosResponse } from 'axios';
+
+interface ResponseData {
+  results: Array<{
+      statement_id: number;
+      series: Array<{
+          name: string;
+          columns: string[];
+          values: string[][];
+      }>;
+  }>;
+}
+
+async function queryMeasurements(): Promise<boolean> {
+  const url = 'http://localhost:8086/query';
+  // TODO: Should this be obtained from .env or will backtester always run on local host?
+  const params = {
+      db: 'backtest',
+      epoch: 'ms',
+      q: 'SHOW measurements'
+  };
+  const auth = {
+      username: 'admin',
+      password: 'admin'
+  };
+  
+  try {
+      const response: AxiosResponse<ResponseData> = await axios.get(url, { params, auth });
+      return response.data.results.some(result => result.series.length > 0);
+  } catch (error) {
+      console.error(error);
+      return false;
+  }
+}
 
 const main = async () => {
   const USDCWETH = '0x794a61358D6845594F94dc1DB02A252b5b4814aD';
@@ -45,7 +79,11 @@ const main = async () => {
     aave: bt.sources[1].id,
     farm: bt.sources[2].id,
   });
-  //bt.onBefore(strategy.before.bind(this));
+
+  if(await queryMeasurements()) {
+    bt.onBefore(strategy.before.bind(this));
+  }
+
   bt.onData(async (snapshot: any) => {
     await strategy.onData(snapshot);
     await waitFor(5);
