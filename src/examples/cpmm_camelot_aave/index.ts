@@ -45,7 +45,7 @@ const main = async () => {
     aave: bt.sources[1].id,
     farm: bt.sources[2].id,
   });
-  bt.onBefore(strategy.before.bind(this));
+  //bt.onBefore(strategy.before.bind(this));
   bt.onData(async (snapshot: any) => {
     await strategy.onData(snapshot);
     await waitFor(5);
