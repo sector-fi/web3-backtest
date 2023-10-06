@@ -32,6 +32,7 @@ export class TimeSeriesDB {
     TimeSeriesDB.db = new InfluxDB({
       url,
       token,
+      timeout: 1000 * 15, // 15 seconds
     });
   }
 

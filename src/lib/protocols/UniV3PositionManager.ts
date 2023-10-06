@@ -248,15 +248,6 @@ export class UniV3Position {
       highTick,
     );
 
-    const tokens = this.tokensFromLiquidity(
-      this.priceToken === 1 ? 1 / pool.close : pool.close,
-      this.minRange,
-      this.maxRange,
-      liquidity,
-      pool.tokens[0].decimals,
-      pool.tokens[1].decimals,
-    );
-
     const feeToken0 = (unbFees[0] * liquidity * activeLiquidity) / 100;
     const feeToken1 = (unbFees[1] * liquidity * activeLiquidity) / 100;
     this.feeToken0 += feeToken0;
@@ -280,6 +271,7 @@ export class UniV3Position {
 
     const x0 = tokenRatioFirstClose[1];
     const y0 = tokenRatioFirstClose[0];
+    const tokens = [posReserves[0], posReserves[1]]
 
     if (this.priceToken === 0) {
       fgV = unbFees[0] + unbFees[1] * pool.close;
@@ -302,13 +294,14 @@ export class UniV3Position {
           lastPool.totalValueLockedToken0 / lastPool.close);
       amountTR = this.amount + (amountV - (x0 * (1 / pool.close) + y0));
     }
+
     const reservesValueUsd =
       pool.prices[0] * posReserves[0] + pool.prices[1] * posReserves[1];
     // const diluted =
     //   feeUSD *
     //   (reservesValueUsd / (lastPool.totalValueLockedUSD + reservesValueUsd));
     this.claimed += feeUSD;
-    this.valueUsd = this.claimed + reservesValueUsd;
+    this.valueUsd = reservesValueUsd;
     this.token0Bal = posReserves[0];
     this.token1Bal = posReserves[1];
     this.reserves = posReserves;
