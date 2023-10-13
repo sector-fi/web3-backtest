@@ -260,7 +260,8 @@ export class UniV3Position {
     );
 
     const feeToken0 =
-      (((unbFees[0] * liquidity * activeLiquidity) / 100) * totalLiquidity) /
+      (unbFees[0] * liquidity * activeLiquidity * totalLiquidity) /
+      100 /
       (totalLiquidity + liquidity); // adjust for significant liquidity increases
     const feeToken1 =
       (unbFees[1] * liquidity * activeLiquidity * totalLiquidity) /
