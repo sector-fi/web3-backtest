@@ -213,8 +213,18 @@ export class UniV3Position {
       this.amount,
     );
 
+    const totalLiquidity = liquidityForStrategy(
+      pool.close,
+      pool.close * 0.08, // rough estimate based on observerd LP amount
+      pool.close * (1 / 0.08), // rough estimate on observerd LP amount
+      pool.totalValueLockedToken0,
+      pool.totalValueLockedToken1,
+      pool.tokens[0].decimals,
+      pool.tokens[1].decimals,
+    );
+
     const unboundedLiquidity = liquidityForStrategy(
-      this.entryPrice,
+      pool.close,
       Math.pow(1.0001, -887220),
       Math.pow(1.0001, 887220),
       posReserves[0],
@@ -222,8 +232,9 @@ export class UniV3Position {
       pool.tokens[0].decimals,
       pool.tokens[1].decimals,
     );
+
     const liquidity = liquidityForStrategy(
-      this.entryPrice,
+      pool.close,
       this.minRange,
       this.maxRange,
       posReserves[0],
@@ -249,17 +260,13 @@ export class UniV3Position {
       highTick,
     );
 
-    const tokens = this.tokensFromLiquidity(
-      this.priceToken === 1 ? 1 / pool.close : pool.close,
-      this.minRange,
-      this.maxRange,
-      liquidity,
-      pool.tokens[0].decimals,
-      pool.tokens[1].decimals,
-    );
-
-    const feeToken0 = (unbFees[0] * liquidity * activeLiquidity) / 100;
-    const feeToken1 = (unbFees[1] * liquidity * activeLiquidity) / 100;
+    const feeToken0 =
+      (((unbFees[0] * liquidity * activeLiquidity) / 100) * totalLiquidity) /
+      (totalLiquidity + liquidity); // adjust for significant liquidity increases
+    const feeToken1 =
+      (unbFees[1] * liquidity * activeLiquidity * totalLiquidity) /
+      100 /
+      (totalLiquidity + liquidity); // adjust for significant liquidity increases
     this.feeToken0 += feeToken0;
     this.feeToken1 += feeToken1;
     this.feeToken0T = feeToken0;
@@ -268,11 +275,14 @@ export class UniV3Position {
     const feeUnb0 = unbFees[0] * unboundedLiquidity;
     const feeUnb1 = unbFees[1] * unboundedLiquidity;
 
-    let fgV, feeV, feeUnb, amountV, feeUSD: number, amountTR;
-    feeUSD = 0;
-    // const firstClose = this.priceToken === 1 ? 1 / data[0].close : data[0].close;
-    const firstClose = this.entryPrice;
-
+    let fgV,
+      feeV,
+      feeUnb,
+      amountV,
+      feeUSD = 0,
+      amountTR;
+    const firstClose =
+      this.priceToken === 1 ? 1 / this.entryPrice : this.entryPrice;
     const tokenRatioFirstClose = this.tokensFromLiquidity(
       firstClose,
       this.minRange,
@@ -281,8 +291,10 @@ export class UniV3Position {
       pool.tokens[0].decimals,
       pool.tokens[1].decimals,
     );
+
     const x0 = tokenRatioFirstClose[1];
     const y0 = tokenRatioFirstClose[0];
+    const tokens = [posReserves[0], posReserves[1]];
 
     if (this.priceToken === 0) {
       fgV = unbFees[0] + unbFees[1] * pool.close;
@@ -305,13 +317,14 @@ export class UniV3Position {
           lastPool.totalValueLockedToken0 / lastPool.close);
       amountTR = this.amount + (amountV - (x0 * (1 / pool.close) + y0));
     }
+
     const reservesValueUsd =
       pool.prices[0] * posReserves[0] + pool.prices[1] * posReserves[1];
-    const diluted =
-      feeUSD *
-      (reservesValueUsd / (lastPool.totalValueLockedUSD + reservesValueUsd));
+    // const diluted =
+    //   feeUSD *
+    //   (reservesValueUsd / (lastPool.totalValueLockedUSD + reservesValueUsd));
     this.claimed += feeUSD;
-    this.valueUsd = this.claimed + reservesValueUsd;
+    this.valueUsd = reservesValueUsd;
     this.token0Bal = posReserves[0];
     this.token1Bal = posReserves[1];
     this.reserves = posReserves;
