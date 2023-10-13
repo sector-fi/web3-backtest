@@ -16,18 +16,17 @@ export class InfluxBatcher<
     super(measurement);
   }
 
-  // adds point to batch
-  public async writePointBatched(point: T, batchLimit: number = 1000) {
-    while (this.lock) await new Promise((r) => setTimeout(r, 10));
-    this.points.push(point);
-    if (this.points.length > batchLimit) await this.exec();
+
+  public async writePointBatched(point: T, batchLimit: number = 10000) {
+    await this.writePoints([point], batchLimit);
   }
 
-  public async writePoint(point: T, batchLimit: number = 1000) {
-    this.writePointBatched(point, batchLimit);
+  public async writePoint(point: T, batchLimit: number = 10000) {
+    await this.writePoints([point], batchLimit);
   }
 
   public async writePoints(points: T[], batchLimit: number = 10000) {
+    while (this.lock) await new Promise((r) => setTimeout(r, 10));
     this.points.push(...points);
     if (this.points.length > batchLimit) await this.exec();
   }
