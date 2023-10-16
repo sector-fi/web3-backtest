@@ -71,7 +71,7 @@ const liquidityForStrategy = (
         sLow /
         Math.pow(10, decimal0))
     );
-  } else if (sPrice <= sHigh && sPrice > sLow) {
+  } else if (sPrice < sHigh && sPrice > sLow) {
     const liq0 =
       tokens0 /
       ((Math.pow(2, 96) * (sHigh - sPrice)) /
