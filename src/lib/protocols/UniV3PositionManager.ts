@@ -212,7 +212,8 @@ export class UniV3Position {
       this.amount,
     );
 
-    const totalLiquidity = liquidityForStrategy(
+    // total active liquidity for this time step (should be use `liquidity()` contract data)
+    const totalActiveActiveLiquidity = liquidityForStrategy(
       pool.close,
       pool.close * 0.935, // rough estimate based on observerd LP amount
       pool.close * (1 / 0.935), // rough estimate on observerd LP amount
@@ -259,16 +260,16 @@ export class UniV3Position {
       highTick,
     );
 
-    // this is the total amount of fees earned during this time step //
-    const totalFees0 = unbFees[0] * totalLiquidity;
-    const totalFees1 = unbFees[1] * totalLiquidity;
+    // this is the total amount of fees earned during this time step
+    const totalFees0 = unbFees[0] * totalActiveActiveLiquidity;
+    const totalFees1 = unbFees[1] * totalActiveActiveLiquidity;
 
     const feeToken0 =
       (((totalFees0 * activeLiquidity) / 100) * liquidity) /
-      (totalLiquidity + liquidity); // adjust share of active liquidity (under estimate, should be activeLP + liquidity)
+      (totalActiveActiveLiquidity + liquidity); // adjust share of active liquidity
     const feeToken1 =
       (((totalFees1 * activeLiquidity) / 100) * liquidity) /
-      (totalLiquidity + liquidity); // adjust share of active liquidity (under estimate, should be activeLP + liquidity)
+      (totalActiveActiveLiquidity + liquidity); // adjust share of active liquidity
 
     this.feeToken0 += feeToken0;
     this.feeToken1 += feeToken1;
