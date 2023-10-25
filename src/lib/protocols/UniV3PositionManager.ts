@@ -203,6 +203,13 @@ export class UniV3Position {
     this.unboundedFees[1] += unbFees[1];
     const pool = this.pool(data);
 
+    // TEMP FIXES FOR MISSING DATA
+    const prevPool = this.pool(lastData);
+    pool.close = pool.prices[this.priceToken];
+    pool.low = Math.min(prevPool.close, pool.close);
+    pool.high = Math.max(prevPool.close, pool.close);
+    // END TEMP FIXES FOR MISSING DATA
+
     const lastPool = this.pool(lastData);
     const posReserves = tokensForStrategy(
       this.entryPrice,
