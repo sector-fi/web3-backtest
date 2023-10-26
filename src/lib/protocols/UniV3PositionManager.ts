@@ -203,12 +203,13 @@ export class UniV3Position {
     this.unboundedFees[1] += unbFees[1];
     const pool = this.pool(data);
 
-    // TEMP FIXES FOR MISSING DATA
-    const prevPool = this.pool(lastData);
-    pool.close = pool.prices[this.priceToken];
-    pool.low = Math.min(prevPool.close, pool.close);
-    pool.high = Math.max(prevPool.close, pool.close);
-    // END TEMP FIXES FOR MISSING DATA
+    if (pool.type === 'swap') {
+      // There is not high and low for swap data
+      const prevPool = this.pool(lastData);
+      pool.close = pool.prices[this.priceToken];
+      pool.low = Math.min(prevPool.close, pool.close);
+      pool.high = Math.max(prevPool.close, pool.close);
+    }
 
     const lastPool = this.pool(lastData);
     const posReserves = tokensForStrategy(
@@ -220,7 +221,7 @@ export class UniV3Position {
     );
 
     // total active liquidity for this time step (should be use `liquidity()` contract data)
-    const totalActiveActiveLiquidity = liquidityForStrategy(
+    const activeLiquidityEstimate = liquidityForStrategy(
       pool.close,
       pool.close * 0.935, // rough estimate based on observerd LP amount
       pool.close * (1 / 0.935), // rough estimate on observerd LP amount
@@ -229,6 +230,8 @@ export class UniV3Position {
       pool.tokens[0].decimals,
       pool.tokens[1].decimals,
     );
+
+    const activeLiquidity = pool.liquidity || activeLiquidityEstimate
 
     const unboundedLiquidity = liquidityForStrategy(
       pool.close,
@@ -260,7 +263,7 @@ export class UniV3Position {
     const minTick = getTickFromPrice(this.minRange, pool, this.priceToken);
     const maxTick = getTickFromPrice(this.maxRange, pool, this.priceToken);
 
-    const activeLiquidity = this.activeLiquidityForCandle(
+    const activeLiquidityRatio = this.activeLiquidityForCandle(
       minTick,
       maxTick,
       lowTick,
@@ -268,15 +271,15 @@ export class UniV3Position {
     );
 
     // this is the total amount of fees earned during this time step
-    const totalFees0 = unbFees[0] * totalActiveActiveLiquidity;
-    const totalFees1 = unbFees[1] * totalActiveActiveLiquidity;
+    const totalFees0 = unbFees[0] * activeLiquidity;
+    const totalFees1 = unbFees[1] * activeLiquidity;
 
     const feeToken0 =
-      (((totalFees0 * activeLiquidity) / 100) * liquidity) /
-      (totalActiveActiveLiquidity + liquidity); // adjust share of active liquidity
+      (((totalFees0 * activeLiquidityRatio) / 100) * liquidity) /
+      (activeLiquidity + liquidity); // adjust share of active liquidity
     const feeToken1 =
-      (((totalFees1 * activeLiquidity) / 100) * liquidity) /
-      (totalActiveActiveLiquidity + liquidity); // adjust share of active liquidity
+      (((totalFees1 * activeLiquidityRatio) / 100) * liquidity) /
+      (activeLiquidity + liquidity); // adjust share of active liquidity
 
     this.feeToken0 += feeToken0;
     this.feeToken1 += feeToken1;
@@ -345,7 +348,7 @@ export class UniV3Position {
       fg1: unbFees[1],
       x0,
       y0,
-      activeliquidity: activeLiquidity,
+      activeLiquidityRatio,
       fees: feeUSD,
       fgV: fgV,
       feeV: feeV,
@@ -357,6 +360,8 @@ export class UniV3Position {
       baseClose: this.priceToken === 1 ? 1 / pool.close : pool.close,
       cumulativeFeeToken0: this.feeToken0,
       cumulativeFeeToken1: this.feeToken1,
+      activeLiquidityEstimate,
+      activeLiquidity,
     };
   }
 }

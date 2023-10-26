@@ -32,6 +32,8 @@ export type Uni3PoolSnapshot = {
   totalValueLockedToken0: number;
   totalValueLockedToken1: number;
   totalValueLockedUSD: number;
+  liquidity?: number;
+  type: Resolution
 };
 
 export type Uni3Snaphot = DataSnapshot<Uni3PoolSnapshot>;
@@ -42,7 +44,7 @@ type Snapshot = {
   //reserves: number[],
   prices: [number, number];
   timestamp: number;
-  res: '1h' | '1m';
+  res: Resolution;
   // totalSupply: number,
   sqrtPriceX96: string;
   tick: string;
@@ -53,6 +55,7 @@ type Snapshot = {
   totalValueLockedToken0: string;
   totalValueLockedToken1: string;
   totalValueLockedUSD: number;
+  liquidity?: number;
 };
 
 type Token = {
@@ -63,12 +66,14 @@ type Token = {
 
 export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   private client: GraphQLClient;
+  private res: Resolution = '1h'
   private pools: {
     [key: string]: { tokens: Token[]; address: string; symbol: string };
   } = {};
   public readonly id: string;
   constructor(public info: DataSourceInfo) {
     this.id = info.id || 'univ3';
+    this.res = info.resolution
     const url = this.getUrl(info.protocol);
     //const url = 'http://0.0.0.0:4000/graphql'
     this.client = new GraphQLClient(url, { headers: {} });
@@ -77,8 +82,14 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   public getUrl(protocol: Protocols) {
     switch (protocol) {
       case 'camelot-dex':
-        // return 'https://data.staging.arkiver.net/robolabs/camelot-ohlc/graphql';
-        return 'https://data.staging.arkiver.net/robolabs/camelot-snapshot-all-swaps/graphql';
+        console.log(this.res)
+        if (this.res === '1h') {
+          return 'https://data.staging.arkiver.net/robolabs/camelot-ohlc/graphql';
+        } else if (this.res === 'swap') {
+          return 'https://data.staging.arkiver.net/robolabs/camelot-snapshot-all-swaps-v2/graphql';
+        } else {
+          throw new Error('resolution not supported ' + this.res)
+        }
       case 'uniswap-dex':
         return 'https://data.staging.arkiver.net/robolabs/univ3-ohlc/graphql';
       default:
@@ -87,7 +98,7 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   }
 
   public resolutions(): Resolution[] {
-    return ['1h'];
+    return ['1h', 'swap'];
   }
 
   public static create(info: DataSourceInfo) {
@@ -156,6 +167,7 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
     to: number,
     limit?: number,
   ): Promise<Uni3Snaphot[]> {
+    const hasLiquidity = this.info.protocol === 'camelot-dex' && this.res === 'swap'
     const query = gql`query SnapshotQuery {
 			Snapshots (
 				sort: TIMESTAMP_ASC
@@ -177,6 +189,7 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
 				totalValueLockedToken0
 				totalValueLockedToken1
 				totalValueLockedUSD
+        ${hasLiquidity ? `liquidity` : ``}
 			}
 		  }
 		`;
@@ -227,6 +240,8 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
             totalValueLockedToken0: Number(snap.totalValueLockedToken0),
             totalValueLockedToken1: Number(snap.totalValueLockedToken1),
             totalValueLockedUSD: Number(snap.totalValueLockedUSD),
+            liquidity: snap.liquidity ? Number(snap.liquidity) : undefined,
+            type: this.res,
           };
           return s;
         });

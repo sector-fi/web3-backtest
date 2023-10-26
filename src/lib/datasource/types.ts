@@ -1,7 +1,6 @@
 export abstract class DataSource<T = DataSnapshot<any>> {
   abstract get id(): string;
   abstract get info(): DataSourceInfo;
-  abstract resolutions(): Resolution[];
   abstract init(): Promise<void>;
   abstract fetch(from: number, to: number, limit?: number): Promise<T[]>;
 }
@@ -18,13 +17,20 @@ export type Protocols =
   | 'joes-v2-dex'
   | 'sonne';
 
-export type Resolution = '1m' | '1h' | '1d';
+export type Resolution = '1m' | '1h' | '1d' | 'swap';
 
 export type DataSourceInfo = {
   id?: string; // optional id for the datasource
   chain: Chains;
   protocol: Protocols;
-  resoution: Resolution;
+  resolution: Resolution;
+  config?: any;
+};
+export type DataSourceRegister = {
+  id?: string; // optional id for the datasource
+  chain: Chains;
+  protocol: Protocols;
+  resolutions: Resolution[];
   config?: any;
 };
 
