@@ -202,15 +202,16 @@ export class UniV3Position {
     this.unboundedFees[0] += unbFees[0];
     this.unboundedFees[1] += unbFees[1];
     const pool = this.pool(data);
+    const lastPool = this.pool(lastData);
 
     if (pool.type === 'swap') {
       // There is not high and low for swap data
-      const prevPool = this.pool(lastData);
-      pool.low = Math.min(prevPool.close, pool.close);
-      pool.high = Math.max(prevPool.close, pool.close);
+      pool.close = pool.prices[this.priceToken];
+      lastPool.close = lastPool.prices[this.priceToken];
+      pool.low = Math.min(lastPool.close, pool.close);
+      pool.high = Math.max(lastPool.close, pool.close);
     }
 
-    const lastPool = this.pool(lastData);
     const posReserves = tokensForStrategy(
       this.entryPrice,
       pool.close,
@@ -230,8 +231,11 @@ export class UniV3Position {
       pool.tokens[1].decimals,
     );
 
-    const activeLiquidity = pool.liquidity || activeLiquidityEstimate
-    const liquidityDiff = (activeLiquidity - activeLiquidityEstimate) / activeLiquidity
+    const poolLiquidity =
+      ((pool?.liquidity ?? 0) + (lastPool?.liquidity ?? 0)) / 2;
+    const activeLiquidity = poolLiquidity || activeLiquidityEstimate;
+    const liquidityDiff =
+      (activeLiquidity - activeLiquidityEstimate) / activeLiquidity;
     const unboundedLiquidity = liquidityForStrategy(
       pool.close,
       Math.pow(1.0001, -887220),
