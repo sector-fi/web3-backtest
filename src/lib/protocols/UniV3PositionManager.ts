@@ -232,7 +232,7 @@ export class UniV3Position {
     );
 
     const activeLiquidity = pool.liquidity || activeLiquidityEstimate
-
+    const liquidityDiff = (activeLiquidity - activeLiquidityEstimate) / activeLiquidity
     const unboundedLiquidity = liquidityForStrategy(
       pool.close,
       Math.pow(1.0001, -887220),
@@ -342,7 +342,6 @@ export class UniV3Position {
     this.token0Bal = posReserves[0];
     this.token1Bal = posReserves[1];
     this.reserves = posReserves;
-
     this.snapshot = {
       fg0: unbFees[0],
       fg1: unbFees[1],
@@ -362,6 +361,7 @@ export class UniV3Position {
       cumulativeFeeToken1: this.feeToken1,
       activeLiquidityEstimate,
       activeLiquidity,
+      liquidityDiff,
     };
   }
 }
