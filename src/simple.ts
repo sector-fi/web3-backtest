@@ -15,7 +15,7 @@ const main = async () => {
     {
       chain: 'arbitrum',
       protocol: 'camelot-dex',
-      resoution: '1m',
+      resolution: '1m',
       config: {
         pairs: [USDCWETH],
       },
@@ -23,7 +23,7 @@ const main = async () => {
     {
       chain: 'arbitrum',
       protocol: 'aave',
-      resoution: '1h',
+      resolution: '1h',
       config: {
         pools: ['ETH', 'USDC'],
       },
@@ -31,7 +31,7 @@ const main = async () => {
     {
       chain: 'arbitrum',
       protocol: 'camelot-farm',
-      resoution: '1h',
+      resolution: '1h',
       config: {
         pools: [USDCWETH],
       },

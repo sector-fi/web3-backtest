@@ -13,7 +13,7 @@ export class DataSourceStore {
 
     const source = entry.createSource(info);
     const resolutions = entry.resolutions
-    if (!resolutions.includes(info.resoution))
+    if (!resolutions.includes(info.resolution))
     if (!resolutions.includes(info.resolution))
       throw new Error(
         `Data source ${info.chain} ${info.protocol} does not support resolution ${info.resolution}`,

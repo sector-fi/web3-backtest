@@ -8,7 +8,7 @@ const main = async () => {
     {
       chain: 'avalanche',
       protocol: 'joes-v2-dex',
-      resoution: '1h',
+      resolution: '1h',
     },
   ];
   const end = new Date();

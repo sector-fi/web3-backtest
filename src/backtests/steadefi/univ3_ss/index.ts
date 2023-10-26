@@ -8,7 +8,7 @@ const main = async () => {
     {
       chain: 'arbitrum',
       protocol: 'uniswap-dex',
-      resoution: '1h',
+      resolution: '1h',
       config: {
         pairs: [USDCWETH],
       },

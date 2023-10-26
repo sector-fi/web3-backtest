@@ -8,7 +8,7 @@ const main = async () => {
     {
       chain: 'ethereum',
       protocol: 'curve-dex',
-      resoution: '1h',
+      resolution: '1h',
       config: {
         pairs: [LUSD3CRV],
       },

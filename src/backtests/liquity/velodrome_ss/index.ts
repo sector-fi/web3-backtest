@@ -10,7 +10,7 @@ const main = async () => {
     {
       chain: 'optimism',
       protocol: 'velodrome-dex',
-      resoution: '1h',
+      resolution: '1h',
       config: {
         pairs: [USDCLUSD, MAILUSD, USDPLUSLUSD],
       },

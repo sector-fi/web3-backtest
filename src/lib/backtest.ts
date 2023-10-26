@@ -21,6 +21,7 @@ export class Backtest {
     private end: Date,
     public readonly sources: DataSource[],
     public options: BacktestOptions,
+    private limit = 5000, // too high and the query will hang
   ) {}
 
   public static async create(
@@ -74,15 +75,13 @@ export class Backtest {
 
     // sort the datasources from high res to low res
     const sources = this.sources.sort((a, b) => {
-      const aRes = Backtest.ResToSeconds(a.info.resoution);
-      const bRes = Backtest.ResToSeconds(b.info.resoution);
+      const aRes = Backtest.ResToSeconds(a.info.resolution);
+      const bRes = Backtest.ResToSeconds(b.info.resolution);
       return aRes > bRes ? 1 : -1;
     });
 
     const start = this.start.getTime() / 1000;
     const end = this.end.getTime() / 1000;
-
-    const limit = 5000;
 
     const formatTime = (time: number) => {
       const t = new Date(time * 1000)
@@ -105,7 +104,7 @@ export class Backtest {
       }
 
       do {
-        const data = await ds.fetch(from, end, limit);
+        const data = await ds.fetch(from, end, this.limit);
         if (data.length === 0) break;
 
         const to = data[data.length - 1].timestamp;
@@ -116,8 +115,9 @@ export class Backtest {
 
         allData = [...allData, ...data];
 
-        finished = data.length < prevDataLimit;
-        prevDataLimit = data.length;
+        // TODO: Remove - but leaving here incase it breaks other tests
+        // finished = data.length < prevDataLimit;
+        // prevDataLimit = data.length;
       } while (!finished);
       return allData;
     });
