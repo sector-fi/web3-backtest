@@ -206,7 +206,6 @@ export class UniV3Position {
     if (pool.type === 'swap') {
       // There is not high and low for swap data
       const prevPool = this.pool(lastData);
-      pool.close = pool.prices[this.priceToken];
       pool.low = Math.min(prevPool.close, pool.close);
       pool.high = Math.max(prevPool.close, pool.close);
     }

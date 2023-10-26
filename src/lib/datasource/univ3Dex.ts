@@ -82,7 +82,6 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   public getUrl(protocol: Protocols) {
     switch (protocol) {
       case 'camelot-dex':
-        console.log(this.res)
         if (this.res === '1h') {
           return 'https://data.staging.arkiver.net/robolabs/camelot-ohlc/graphql';
         } else if (this.res === 'swap') {
