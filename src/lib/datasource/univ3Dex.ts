@@ -22,7 +22,7 @@ export type Uni3PoolSnapshot = {
   }[];
   // totalSupply: number
   prices: [number, number];
-  sqrtPriceX96: bigint;
+  sqrtPriceX96: string;
   close: number;
   // tick: number
   feeGrowthGlobal0X128: number;
@@ -33,7 +33,7 @@ export type Uni3PoolSnapshot = {
   totalValueLockedToken1: number;
   totalValueLockedUSD: number;
   liquidity?: number;
-  type: Resolution
+  type: Resolution;
 };
 
 export type Uni3Snaphot = DataSnapshot<Uni3PoolSnapshot>;
@@ -66,14 +66,14 @@ type Token = {
 
 export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   private client: GraphQLClient;
-  private res: Resolution = '1h'
+  private res: Resolution = '1h';
   private pools: {
     [key: string]: { tokens: Token[]; address: string; symbol: string };
   } = {};
   public readonly id: string;
   constructor(public info: DataSourceInfo) {
     this.id = info.id || 'univ3';
-    this.res = info.resolution
+    this.res = info.resolution;
     const url = this.getUrl(info.protocol);
     //const url = 'http://0.0.0.0:4000/graphql'
     this.client = new GraphQLClient(url, { headers: {} });
@@ -87,7 +87,7 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
         } else if (this.res === 'swap') {
           return 'https://data.staging.arkiver.net/robolabs/camelot-snapshot-all-swaps-v2/graphql';
         } else {
-          throw new Error('resolution not supported ' + this.res)
+          throw new Error('resolution not supported ' + this.res);
         }
       case 'uniswap-dex':
         return 'https://data.staging.arkiver.net/robolabs/univ3-ohlc/graphql';
@@ -166,7 +166,8 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
     to: number,
     limit?: number,
   ): Promise<Uni3Snaphot[]> {
-    const hasLiquidity = this.info.protocol === 'camelot-dex' && this.res === 'swap'
+    const hasLiquidity =
+      this.info.protocol === 'camelot-dex' && this.res === 'swap';
     const query = gql`query SnapshotQuery {
 			Snapshots (
 				sort: TIMESTAMP_ASC
@@ -229,7 +230,7 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
             pool: pool.address,
             tokens,
             symbol: pool.symbol,
-            sqrtPriceX96: BigInt(snap.sqrtPriceX96),
+            sqrtPriceX96: snap.sqrtPriceX96,
             close: sqrtPriceX96ToPrice(snap.sqrtPriceX96),
             block: snap.block,
             feeGrowthGlobal0X128: Number(snap.feeGrowthGlobal0X128),

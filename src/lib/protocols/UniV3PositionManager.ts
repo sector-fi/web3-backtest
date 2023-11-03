@@ -206,8 +206,9 @@ export class UniV3Position {
 
     if (pool.type === 'swap') {
       // There is not high and low for swap data
-      pool.close = pool.prices[this.priceToken];
-      lastPool.close = lastPool.prices[this.priceToken];
+      // console.log('POOL CLOSE VS PRICE', pool.close, pool.prices[0]);
+      pool.close = pool.prices[0];
+      lastPool.close = lastPool.prices[0];
       pool.low = Math.min(lastPool.close, pool.close);
       pool.high = Math.max(lastPool.close, pool.close);
     }
@@ -313,34 +314,44 @@ export class UniV3Position {
     const y0 = tokenRatioFirstClose[0];
     const tokens = [posReserves[0], posReserves[1]];
 
-    if (this.priceToken === 0) {
-      fgV = unbFees[0] + unbFees[1] * pool.close;
-      feeV = feeToken0 + feeToken1 * pool.close;
-      feeUnb = feeUnb0 + feeUnb1 * pool.close;
-      amountV = tokens[0] + tokens[1] * pool.close;
-      feeUSD =
-        (feeV * lastPool.totalValueLockedUSD) /
-        (lastPool.totalValueLockedToken1 * lastPool.close +
-          lastPool.totalValueLockedToken0);
-      amountTR = this.amount + (amountV - (x0 * pool.close + y0));
-    } else if (this.priceToken === 1) {
-      fgV = unbFees[0] / pool.close + unbFees[1];
-      feeV = feeToken0 / pool.close + feeToken1;
-      feeUnb = feeUnb0 + feeUnb1 * pool.close;
-      amountV = tokens[1] / pool.close + tokens[0];
-      feeUSD =
-        (feeV * lastPool.totalValueLockedUSD) /
-        (lastPool.totalValueLockedToken1 +
-          lastPool.totalValueLockedToken0 / lastPool.close);
-      amountTR = this.amount + (amountV - (x0 * (1 / pool.close) + y0));
-    }
+    // if (this.priceToken === 0) {
+    //   fgV = unbFees[0] + unbFees[1] * pool.close;
+    //   feeV = feeToken0 + feeToken1 * pool.close;
+    //   feeUnb = feeUnb0 + feeUnb1 * pool.close;
+    //   amountV = tokens[0] + tokens[1] * pool.close;
+    //   feeUSD =
+    //     (feeV * lastPool.totalValueLockedUSD) /
+    //     (lastPool.totalValueLockedToken1 * lastPool.close +
+    //       lastPool.totalValueLockedToken0);
+    //   amountTR = this.amount + (amountV - (x0 * pool.close + y0));
+    // } else if (this.priceToken === 1) {
+    //   fgV = unbFees[0] / pool.close + unbFees[1];
+    //   feeV = feeToken0 / pool.close + feeToken1;
+    //   feeUnb = feeUnb0 + feeUnb1 * pool.close;
+    //   amountV = tokens[1] / pool.close + tokens[0];
+    //   feeUSD =
+    //     (feeV * lastPool.totalValueLockedUSD) /
+    //     (lastPool.totalValueLockedToken1 +
+    //       lastPool.totalValueLockedToken0 / lastPool.close);
+    //   amountTR = this.amount + (amountV - (x0 * (1 / pool.close) + y0));
+    // }
+
+    // TODO this code works with priceToken = 0 but token0 is ETH
+    feeV =
+      this.priceToken == 1
+        ? feeToken0 + feeToken1 * pool.close
+        : feeToken0 * pool.close + feeToken1;
+
+    feeUSD = feeV;
+
+    // console.log('total fees', feeV, feeToken0, feeToken1);
 
     const reservesValueUsd =
       pool.prices[0] * posReserves[0] + pool.prices[1] * posReserves[1];
     // const diluted =
     //   feeUSD *
     //   (reservesValueUsd / (lastPool.totalValueLockedUSD + reservesValueUsd));
-    this.claimed += feeUSD;
+    this.claimed += feeV;
     this.valueUsd = reservesValueUsd;
     this.token0Bal = posReserves[0];
     this.token1Bal = posReserves[1];
