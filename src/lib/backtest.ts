@@ -6,9 +6,22 @@ import {
   Resolution,
 } from './datasource/types.js';
 import { getCachedData, updateCache } from './utils/cache.js';
+import { DB, MongoCache } from './utils/mongoCache.js';
 
 type BacktestOptions = {
   useCache?: boolean; // default: true
+};
+
+const formatTime = (time: number) => {
+  const t = new Date(time * 1000)
+    .toISOString()
+    .replace(':00.000Z', '')
+    .split('T');
+  return `${t[0]} ${t[1]}`;
+};
+
+const toElapsed = (start: number) => {
+  return ((Date.now() - start) / 1000).toFixed(2) + 's';
 };
 
 export class Backtest {
@@ -21,7 +34,7 @@ export class Backtest {
     private end: Date,
     public readonly sources: DataSource[],
     public options: BacktestOptions,
-    private limit = 5000, // too high and the query will hang
+    private limit = 3000, // too high and the query will hang
   ) {}
 
   public static async create(
@@ -82,87 +95,66 @@ export class Backtest {
 
     const start = this.start.getTime() / 1000;
     const end = this.end.getTime() / 1000;
+    let finished = false;
+    let from = start;
+    let to = end;
 
-    const formatTime = (time: number) => {
-      const t = new Date(time * 1000)
-        .toISOString()
-        .replace(':00.000Z', '')
-        .split('T');
-      return `${t[0]} ${t[1]}`;
-    };
+    const getSource = async <T>(source: DataSource<T>) => {
+      return this.options.useCache ? await MongoCache.create(source) : source;
+    }
+    // use the first data source as the lead because it'll have the highest resolution
+    const lead = await getSource(sources[0]);
+    const others = await Promise.all(sources.slice(1).map(async (source) => await getSource(source)));
+    do {
+      const data = await lead.fetch(from, end, this.limit);
+      if (data.length === 0) break;
 
-    // grab all the data
-    const dataPromises = sources.map(async (ds) => {
-      let from = start;
-      let finished = false;
-      let allData: any[] = [];
-      let prevDataLimit = 0;
+      to = data[data.length - 1].timestamp;
+      console.log(
+        `Fetching data from ${formatTime(from)} to ${formatTime(to)}`,
+      );
+      const start = Date.now();
+      const allData = [
+        data,
+        ...(await Promise.all(others.map((ds) => ds.fetch(from, to, this.limit)))),
+      ];
+      console.log(`data fetch elapsed ${toElapsed(start)}`);
+      from = to;
 
-      if (this.options.useCache) {
-        const cachedData = await getCachedData(ds.id, start, end);
-        if (cachedData) return cachedData;
-      }
+      // merge all timestamps
+      const timestamps = Array.prototype.concat.apply(
+        [],
+        allData.map((e) => e.map((e) => e.timestamp)),
+      ) as number[];
+      const unique = Array.from(new Set(timestamps)).sort((a, b) => a - b);
 
-      do {
-        const data = await ds.fetch(from, end, this.limit);
-        if (data.length === 0) break;
-
-        const to = data[data.length - 1].timestamp;
-        console.log(
-          `Fetched ${ds.id} data from ${formatTime(from)} to ${formatTime(to)}`,
+      const mergedData = unique.map((ts) => {
+        // find all datasources that have a snapshot at this timestamp
+        const dsWithSnapshots = allData.filter(
+          (ds) => ds.findIndex((e) => e.timestamp === ts) !== -1,
         );
-        from = to;
+        // grab data from each datasource at this timestamp
+        const data = dsWithSnapshots.map(
+          (ds) => ds.find((e) => e.timestamp === ts)?.data,
+        );
+        return {
+          timestamp: ts,
+          data: Object.assign({}, ...data),
+        };
+      });
 
-        allData = [...allData, ...data];
-
-        // TODO: Remove - but leaving here incase it breaks other tests
-        // finished = data.length < prevDataLimit;
-        // prevDataLimit = data.length;
-      } while (!finished);
-      return allData;
-    });
-
-    const allData = await Promise.all(dataPromises);
-    if (this.options.useCache) {
-      for (const data of allData) {
-        await await updateCache(data, start, end);
+      // emit each of the snapshots
+      for (const snap of mergedData) {
+        if (this.onDataHandler) await this.onDataHandler(snap);
       }
-    }
 
-    // merge all timestamps
-    const timestamps = Array.prototype.concat.apply(
-      [],
-      allData.map((e) => e.map((e) => e.timestamp)),
-    ) as number[];
-    console.log('sorting timestamps');
-    const unique = Array.from(new Set(timestamps)).sort((a, b) => a - b);
+      // End when we run out of data
+      finished = data.length < 10;
+    } while (!finished);
 
-    console.log('merging data');
-    const mergedData = unique.map((ts) => {
-      // grab data from each datasource at this timestamp
-      const data = allData
-        .map((ds) => {
-          const index = ds.findIndex((e) => e.timestamp === ts);
-          if (index === -1) return;
-          const data = ds[index]?.data;
-          // remove data from the array so we don't have to iterate through it again
-          ds.splice(index, 1);
-          return data;
-        })
-        .filter((e) => e);
-
-      return {
-        timestamp: ts,
-        data: Object.assign({}, ...data),
-      };
-    });
-
-    console.log('running backtest... 🏃‍♂️');
-    // emit each of the snapshots
-    for (const snap of mergedData) {
-      if (this.onDataHandler) await this.onDataHandler(snap);
-    }
-
-    if (this.onAfterHandler) await this.onAfterHandler();
+    if (this.onAfterHandler)
+      await this.onAfterHandler()
+    
+    DB.disconnect()
   }
 }
