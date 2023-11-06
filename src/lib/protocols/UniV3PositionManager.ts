@@ -208,11 +208,9 @@ export class UniV3Position {
       // There is not high and low for swap data
       // console.log('POOL CLOSE VS PRICE', pool.close, pool.prices[0]);
       pool.close = pool.prices[0];
-      lastPool.close = lastPool.prices[0];
       pool.low = Math.min(lastPool.close, pool.close);
       pool.high = Math.max(lastPool.close, pool.close);
     }
-
     const posReserves = tokensForStrategy(
       this.entryPrice,
       pool.close,
