@@ -57,12 +57,13 @@ export class DB {
   }
 
   async clear() {
-    await this.info.deleteMany({})
-    await this.data.deleteMany({})
+    await this.info.drop()
+    await this.data.drop()
+    console.log('Cache collections dropped')
   }
 
   static async disconnect() {
-    if (!DB.initialised)
+    if (DB.initialised)
       await client.close()
   }
 }
@@ -90,7 +91,9 @@ export class MongoCache<T> {
       return this.fetchAndCache(from, to, limit)
     }
 
-    const cachedData = await this.db.data.find({ key: this.source.key, timestamp: { $gte: from, $lte: to } }).limit(limit).toArray()
+    const cachedData = await this.db.data.find({ key: this.source.key, timestamp: { $gte: from, $lte: to } })
+      .limit(limit)
+      .toArray()
     if (cachedData.length < limit) {
       // We have some cached data but not enough. 
       return this.fetchAndCache(from, to, limit)

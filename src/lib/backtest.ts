@@ -98,6 +98,7 @@ export class Backtest {
     let finished = false;
     let from = start;
     let to = end;
+    let count = 0;
 
     const getSource = async <T>(source: DataSource<T>) => {
       return this.options.useCache ? await MongoCache.create(source) : source;
@@ -106,6 +107,7 @@ export class Backtest {
     const lead = await getSource(sources[0]);
     const others = await Promise.all(sources.slice(1).map(async (source) => await getSource(source)));
     do {
+      console.time(`[${count}] Fetch Data  `)
       const data = await lead.fetch(from, end, this.limit);
       if (data.length === 0) break;
 
@@ -142,14 +144,18 @@ export class Backtest {
           data: Object.assign({}, ...data),
         };
       });
+      console.timeEnd(`[${count}] Fetch Data  `)
 
+      console.time(`[${count}] Run Backtest`)
       // emit each of the snapshots
       for (const snap of mergedData) {
         if (this.onDataHandler) await this.onDataHandler(snap);
       }
-
+      console.timeEnd(`[${count}] Run Backtest`)
+      console.log('------------------------')
       // End when we run out of data
       finished = data.length < 10;
+      count++
     } while (!finished);
 
     if (this.onAfterHandler)
