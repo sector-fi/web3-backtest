@@ -71,12 +71,19 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
     [key: string]: { tokens: Token[]; address: string; symbol: string };
   } = {};
   public readonly id: string;
+  private initialised = false
+  private lastPrice: Record<string, number> = {}
+
   constructor(public info: DataSourceInfo) {
     this.id = info.id || 'univ3';
     this.res = info.resolution;
     const url = this.getUrl(info.protocol);
     //const url = 'http://0.0.0.0:4000/graphql'
     this.client = new GraphQLClient(url, { headers: {} });
+  }
+
+  public get key() {
+    return `univ3-${this.info.protocol}-${this.res}`
   }
 
   public getUrl(protocol: Protocols) {
@@ -102,6 +109,13 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
 
   public static create(info: DataSourceInfo) {
     return new Uni3DexDataSource(info);
+  }
+
+  public symbol(poolAddress: string) {
+    const id = Object.keys(this.pools).find(e => this.pools[e].address === poolAddress)
+    if (id === undefined)
+      throw new Error('Cannot find symbol for pool ' + poolAddress)
+    return this.pools[id].symbol
   }
 
   private async getTokens() {
@@ -130,6 +144,10 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
   // 	address
   // }
   public async init() {
+    if (this.initialised) {
+      return
+    }
+    this.initialised = true
     const tokens = await this.getTokens();
     const rawPools = (
       (await this.client.request(gql`
@@ -222,6 +240,13 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
               (sqrtPriceX96BN * sqrtPriceX96BN * 10n ** 18n) / 2n ** 192n;
             return bigintToNumber(price, pool.tokens[1].decimals);
           };
+          
+          
+          const price = snap.prices[0] / snap.prices[1]
+          const open = this.lastPrice[pool.symbol] || price;
+          const high = Math.max(open, price);
+          const low = Math.min(open, price);
+          const close = price;
 
           //const price = tokens.reduce((acc, token) => acc + (token.reserve * token.price), 0) / snap.totalSupply
           const s: Uni3PoolSnapshot = {
@@ -231,12 +256,12 @@ export class Uni3DexDataSource implements DataSource<Uni3Snaphot> {
             tokens,
             symbol: pool.symbol,
             sqrtPriceX96: snap.sqrtPriceX96,
-            close: sqrtPriceX96ToPrice(snap.sqrtPriceX96),
+            close,
             block: snap.block,
             feeGrowthGlobal0X128: Number(snap.feeGrowthGlobal0X128),
             feeGrowthGlobal1X128: Number(snap.feeGrowthGlobal1X128),
-            low: sqrtPriceX96ToPrice(snap.low),
-            high: sqrtPriceX96ToPrice(snap.high),
+            low,
+            high,
             totalValueLockedToken0: Number(snap.totalValueLockedToken0),
             totalValueLockedToken1: Number(snap.totalValueLockedToken1),
             totalValueLockedUSD: Number(snap.totalValueLockedUSD),

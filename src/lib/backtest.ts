@@ -120,7 +120,6 @@ export class Backtest {
         data,
         ...(await Promise.all(others.map((ds) => ds.fetch(from, to, this.limit)))),
       ];
-      console.log(`data fetch elapsed ${toElapsed(start)}`);
       from = to;
 
       // merge all timestamps
