@@ -77,7 +77,7 @@ export class MongoCache<T> {
 
   public isPartiallyCached(cached: CacheInfo, from: number, to: number): boolean {
     for (const section of cached.sections) {
-      if (from >= section.start && from <= section.end) {
+      if (from > section.start && from <= section.end) {
         return true
       }
     }
@@ -91,11 +91,11 @@ export class MongoCache<T> {
       return this.fetchAndCache(from, to, limit)
     }
 
-    const cachedData = await this.db.data.find({ key: this.source.key, timestamp: { $gte: from, $lte: to } })
+    const cachedData = await this.db.data.find({ key: this.source.key, timestamp: { $gt: from, $lte: to } })
       .limit(limit)
       .toArray()
-    if (cachedData.length < limit) {
-      // We have some cached data but not enough. 
+
+    if (cachedData.length === 0) {
       return this.fetchAndCache(from, to, limit)
     }
 

@@ -113,9 +113,8 @@ export class Backtest {
 
       to = data[data.length - 1].timestamp;
       console.log(
-        `Fetching data from ${formatTime(from)} to ${formatTime(to)}`,
+        `Fetched data from ${formatTime(from)} to ${formatTime(to)}`,
       );
-      const start = Date.now();
       const allData = [
         data,
         ...(await Promise.all(others.map((ds) => ds.fetch(from, to, this.limit)))),
