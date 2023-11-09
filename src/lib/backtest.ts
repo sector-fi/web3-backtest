@@ -7,10 +7,14 @@ import {
 } from './datasource/types.js';
 import { getCachedData, updateCache } from './utils/cache.js';
 import { DB, MongoCache } from './utils/mongoCache.js';
+import { NoCache } from './utils/noCache.js';
 
 type BacktestOptions = {
   useCache?: boolean; // default: true
 };
+
+const ONE_HOUR = 3600;
+const ONE_MINUTE = 60;
 
 const formatTime = (time: number) => {
   const t = new Date(time * 1000)
@@ -99,25 +103,28 @@ export class Backtest {
     let from = start;
     let to = end;
     let count = 0;
+    const res = sources[0].info.resolution
+    const addition = res === '1h' ? ONE_HOUR : res === '1m' ? ONE_MINUTE : 1 
 
-    const getSource = async <T>(source: DataSource<T>) => {
-      return this.options.useCache ? await MongoCache.create(source) : source;
+    const getSource = async <T>(source: DataSource<DataSnapshot<T>>) => {
+      return this.options.useCache ? await MongoCache.create(source) : NoCache.create(source);
     }
     // use the first data source as the lead because it'll have the highest resolution
     const lead = await getSource(sources[0]);
     const others = await Promise.all(sources.slice(1).map(async (source) => await getSource(source)));
     do {
       console.time(`[${count}] Fetch Data  `)
-      const data = await lead.fetch(from, end, this.limit);
+      const { data, cached } = await lead.fetch(from, end, this.limit);
       if (data.length === 0) break;
 
-      to = data[data.length - 1].timestamp;
+      to = data[data.length - 1].timestamp + addition;
       console.log(
         `Fetched data from ${formatTime(from)} to ${formatTime(to)}`,
       );
+
       const allData = [
         data,
-        ...(await Promise.all(others.map((ds) => ds.fetch(from, to, this.limit)))),
+        ...await Promise.all(others.map((ds) => ds.fetch(from, to, this.limit).then(e => e.data))),
       ];
       from = to;
 
@@ -152,7 +159,10 @@ export class Backtest {
       console.timeEnd(`[${count}] Run Backtest`)
       console.log('------------------------')
       // End when we run out of data
-      finished = data.length < 10;
+      finished = data.length === 0;
+      if (finished) {
+        console.log('FINISHED!!!')
+      }
       count++
     } while (!finished);
 
