@@ -159,7 +159,7 @@ export class Backtest {
       console.timeEnd(`[${count}] Run Backtest`)
       console.log('------------------------')
       // End when we run out of data
-      finished = data.length === 0;
+      finished = data.length === 0 || from >= end;;
       if (finished) {
         console.log('FINISHED!!!')
       }
