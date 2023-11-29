@@ -94,7 +94,7 @@ export class Backtest {
     const sources = this.sources.sort((a, b) => {
       const aRes = Backtest.ResToSeconds(a.info.resolution);
       const bRes = Backtest.ResToSeconds(b.info.resolution);
-      return aRes > bRes ? 1 : -1;
+      return aRes >= bRes ? 1 : -1;
     });
 
     const start = this.start.getTime() / 1000;
